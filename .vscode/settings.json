@@ -1,0 +1,7 @@
+{
+    "html.validate.scripts": false,
+    "emmet.includeLanguages": { "jinja-html": "html" },
+    "[html]": {
+        "editor.formatOnSave": false
+    }
+}
