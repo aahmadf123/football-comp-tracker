@@ -163,7 +163,24 @@ $(document).ready(function () {
     playersTable = $('#playersTable').DataTable({
         ajax: {
             url: '/api/players',
-            dataSrc: function (json) { playersData = json; return json; }
+            dataSrc: function (json) {
+                if (Array.isArray(json)) {
+                    playersData = json;
+                    return json;
+                }
+                // Wrapped response e.g. { data: [...] }
+                if (json && Array.isArray(json.data)) {
+                    playersData = json.data;
+                    return json.data;
+                }
+                console.error('Unexpected /api/players response:', json);
+                showToast('Error loading players: unexpected server response. Please refresh.', 'danger');
+                return [];
+            },
+            error: function (xhr, error, thrown) {
+                console.error('Players AJAX error:', xhr.status, error);
+                showToast('Error loading players (HTTP ' + xhr.status + '). Please log in again or refresh.', 'danger');
+            }
         },
         columns: buildColumns(),
         order: [[0, 'asc']],
@@ -176,6 +193,8 @@ $(document).ready(function () {
             zeroRecords: 'No matching players found.',
         },
         drawCallback: function () {
+            // Keep playersData in sync after reload/draw
+            playersData = playersTable.rows().data().toArray();
             updateFooterTotals();
             writeURLParams();
         },
