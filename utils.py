@@ -1,6 +1,9 @@
 import csv
 import os
 import io
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from models import db, Player
 from datetime import datetime
 
@@ -13,8 +16,10 @@ CSV_COLUMNS = [
     "On/Off Campus",
     "Rev Share $",
     "Contract Length",
+    "Contract Start Date",
     "Stipend",
     "Total",
+    "Status",
 ]
 
 VALID_POSITIONS = [
@@ -48,6 +53,7 @@ def parse_currency(value):
 
 def validate_row(row, row_num):
     """Validate a CSV row and return (cleaned_data, errors)."""
+    from models import PLAYER_STATUSES
     errors = []
 
     last_name = row.get("Last Name", "").strip()
@@ -58,6 +64,8 @@ def validate_row(row, row_num):
     rev_share = parse_currency(row.get("Rev Share $", 0))
     contract_raw = row.get("Contract Length", "").strip()
     stipend = parse_currency(row.get("Stipend", 0))
+    status_raw = row.get("Status", "Signed").strip().title()
+    contract_start_raw = row.get("Contract Start Date", "").strip()
 
     if not last_name:
         errors.append(f"Row {row_num}: Last Name is required.")
@@ -84,6 +92,20 @@ def validate_row(row, row_num):
     if stipend < 0:
         errors.append(f"Row {row_num}: Stipend cannot be negative.")
 
+    # Normalize status
+    status = status_raw if status_raw in PLAYER_STATUSES else "Signed"
+
+    # Parse contract start date
+    contract_start_date = None
+    if contract_start_raw:
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"):
+            try:
+                from datetime import date
+                contract_start_date = datetime.strptime(contract_start_raw, fmt).date()
+                break
+            except ValueError:
+                continue
+
     total = rev_share + stipend
 
     cleaned = {
@@ -94,10 +116,11 @@ def validate_row(row, row_num):
         "on_off_campus": campus,
         "rev_share": rev_share,
         "contract_length": contract_length,
+        "contract_start_date": contract_start_date,
         "stipend": stipend,
         "total": total,
+        "status": status,
     }
-
     return cleaned, errors
 
 
@@ -146,8 +169,10 @@ def import_csv(file_stream, user_id, replace=False):
             on_off_campus=data["on_off_campus"],
             rev_share=data["rev_share"],
             contract_length=data["contract_length"],
+            contract_start_date=data.get("contract_start_date"),
             stipend=data["stipend"],
             total=data["total"],
+            status=data.get("status", "Signed"),
             created_by=user_id,
             updated_by=user_id,
         )
@@ -173,11 +198,119 @@ def export_csv():
             p.on_off_campus,
             f"${p.rev_share:,.2f}" if p.rev_share else "$0.00",
             p.contract_length,
+            p.contract_start_date.isoformat() if p.contract_start_date else "",
             f"${p.stipend:,.2f}" if p.stipend else "$0.00",
             f"${p.total:,.2f}" if p.total else "$0.00",
+            p.status or "Signed",
         ])
 
     return output.getvalue()
+
+
+def preview_csv_import(file_stream):
+    """Parse CSV and return preview without committing to DB."""
+    errors = []
+    new_players = []
+    update_players = []
+
+    try:
+        content = file_stream.read().decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(content))
+
+        if reader.fieldnames:
+            headers = [h.strip() for h in reader.fieldnames]
+            required = {"Last Name", "First Name"}
+            if not required.issubset(set(headers)):
+                return {"errors": [f"CSV must have at least: {', '.join(required)}"], "new": [], "update": []}
+
+        for i, row in enumerate(reader, start=2):
+            cleaned, row_errors = validate_row(row, i)
+            if row_errors:
+                errors.extend(row_errors)
+                continue
+
+            existing = Player.query.filter(
+                db.func.lower(Player.last_name) == cleaned["last_name"].lower(),
+                db.func.lower(Player.first_name) == cleaned["first_name"].lower(),
+            ).first()
+
+            entry = {
+                "last_name": cleaned["last_name"],
+                "first_name": cleaned["first_name"],
+                "position": cleaned["position"],
+                "year": cleaned["year"],
+                "rev_share": cleaned["rev_share"],
+                "stipend": cleaned["stipend"],
+                "total": cleaned["total"],
+                "status": cleaned.get("status", "Signed"),
+            }
+            if existing:
+                entry["existing_total"] = existing.total or 0
+                update_players.append(entry)
+            else:
+                new_players.append(entry)
+
+    except UnicodeDecodeError:
+        return {"errors": ["File encoding error. Please save as UTF-8."], "new": [], "update": []}
+    except csv.Error as e:
+        return {"errors": [f"CSV parsing error: {str(e)}"], "new": [], "update": []}
+
+    return {"new": new_players, "update": update_players, "errors": errors}
+
+
+def record_player_history(player, changed_by_id):
+    """Snapshot current player state into history."""
+    from models import PlayerHistory
+    snap = PlayerHistory(
+        player_id=player.id,
+        changed_by=changed_by_id,
+        rev_share=player.rev_share,
+        stipend=player.stipend,
+        total=player.total,
+        status=player.status,
+        position=player.position,
+        year=player.year,
+        notes=player.notes,
+    )
+    db.session.add(snap)
+
+
+def send_notification(subject, body):
+    """Send email to all admin/gm users. Silent no-op if MAIL_SERVER not configured."""
+    from flask import current_app
+    from models import User
+    cfg = current_app.config
+    mail_server = cfg.get("MAIL_SERVER", "")
+    if not mail_server:
+        return
+
+    try:
+        users = User.query.filter(
+            User.role.in_(["admin", "gm"]),
+            User.is_active_user == True,
+        ).all()
+        recipients = [u.email for u in users if u.email]
+        if not recipients:
+            return
+
+        sender = cfg.get("MAIL_DEFAULT_SENDER") or cfg.get("MAIL_USERNAME", "noreply@localhost")
+        msg = MIMEMultipart()
+        msg["From"] = sender
+        msg["To"] = ", ".join(recipients)
+        msg["Subject"] = f"[UT Football Tracker] {subject}"
+        msg.attach(MIMEText(body, "plain"))
+
+        port = int(cfg.get("MAIL_PORT", 587))
+        with smtplib.SMTP(mail_server, port, timeout=5) as server:
+            if cfg.get("MAIL_USE_TLS", True):
+                server.starttls()
+            username = cfg.get("MAIL_USERNAME", "")
+            password = cfg.get("MAIL_PASSWORD", "")
+            if username and password:
+                server.login(username, password)
+            server.sendmail(sender, recipients, msg.as_string())
+    except Exception:
+        pass  # Never crash the app for email failures
 
 
 def sync_csv_to_disk(csv_path):

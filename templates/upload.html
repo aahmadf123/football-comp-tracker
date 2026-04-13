@@ -3,12 +3,12 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-9">
         <h3 class="mb-4"><i class="bi bi-cloud-upload me-2"></i>Upload CSV</h3>
 
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
-                <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.upload_csv') }}">
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.upload_csv') }}" id="uploadForm">
                     {{ csrf_token() | safe if csrf_token is defined else '' }}
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -28,50 +28,162 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-ut-gold btn-lg" id="uploadBtn">
-                        <i class="bi bi-cloud-upload me-2"></i>Upload & Import
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary" id="previewBtn">
+                            <i class="bi bi-eye me-2"></i>Preview Import
+                        </button>
+                        <button type="submit" class="btn btn-ut-gold btn-lg" id="uploadBtn">
+                            <i class="bi bi-cloud-upload me-2"></i>Upload & Import
+                        </button>
+                    </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Preview Results -->
+        <div id="previewSection" class="d-none mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-table me-2"></i>Import Preview</h6>
+                    <span id="previewSummary" class="small text-muted"></span>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs border-0 px-3 pt-3" id="previewTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-tab="new">
+                                <i class="bi bi-plus-circle text-success me-1"></i>New <span class="badge bg-success ms-1" id="newCount">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-tab="update">
+                                <i class="bi bi-pencil text-warning me-1"></i>Updates <span class="badge bg-warning text-dark ms-1" id="updateCount">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-tab="errors">
+                                <i class="bi bi-exclamation-triangle text-danger me-1"></i>Errors <span class="badge bg-danger ms-1" id="errorCount">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div id="previewContent" class="p-3" style="max-height:350px;overflow-y:auto;">
+                        <p class="text-muted">Loading preview...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- CSV Format Guide -->
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>CSV Format Guide</h6>
             </div>
             <div class="card-body">
                 <p class="mb-2">Your CSV file should have these column headers:</p>
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Column</th>
-                                <th>Required</th>
-                                <th>Format</th>
-                                <th>Example</th>
-                            </tr>
+                        <thead class="table-dark">
+                            <tr><th>Column</th><th>Required</th><th>Format</th><th>Example</th></tr>
                         </thead>
                         <tbody>
                             <tr><td>Last Name</td><td><span class="badge bg-danger">Required</span></td><td>Text</td><td>Smith</td></tr>
                             <tr><td>First Name</td><td><span class="badge bg-danger">Required</span></td><td>Text</td><td>John</td></tr>
-                            <tr><td>Position</td><td>Optional</td><td>QB, RB, WR, TE, OL, DL, LB, CB, S, K, P, etc.</td><td>QB</td></tr>
+                            <tr><td>Position</td><td>Optional</td><td>QB, RB, WR, TE, OL, DL, LB, CB, S, K, P…</td><td>QB</td></tr>
                             <tr><td>Year</td><td>Optional</td><td>FR, SO, JR, SR, RS FR, RS SO, RS JR, RS SR, GR</td><td>JR</td></tr>
                             <tr><td>On/Off Campus</td><td>Optional</td><td>On or Off</td><td>On</td></tr>
                             <tr><td>Rev Share $</td><td>Optional</td><td>Number (can include $, commas)</td><td>$1,500.00</td></tr>
                             <tr><td>Contract Length</td><td>Optional</td><td>6 months or 12 months</td><td>12 months</td></tr>
+                            <tr><td>Contract Start Date</td><td>Optional</td><td>YYYY-MM-DD or MM/DD/YYYY</td><td>2025-08-01</td></tr>
                             <tr><td>Stipend</td><td>Optional</td><td>Number (can include $, commas)</td><td>$500.00</td></tr>
+                            <tr><td>Status</td><td>Optional</td><td>Offered, Negotiating, Signed, Declined</td><td>Signed</td></tr>
                             <tr><td>Total</td><td>Auto-calculated</td><td>Rev Share + Stipend</td><td>$2,000.00</td></tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="alert alert-info small mt-3 mb-0">
                     <i class="bi bi-lightbulb me-1"></i>
-                    <strong>Tip:</strong> The Total column is automatically calculated (Rev Share + Stipend). 
-                    You can include it in your CSV but it will be recalculated on import.
+                    <strong>Tip:</strong> Use the <strong>Preview Import</strong> button to see exactly what will be added or updated before committing.
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let previewData = null;
+let activeTab = 'new';
+
+function renderPreviewTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('#previewTabs .nav-link').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    const content = document.getElementById('previewContent');
+    if (!previewData) return;
+
+    if (tab === 'new') {
+        if (!previewData.new.length) { content.innerHTML = '<p class="text-muted small">No new players to add.</p>'; return; }
+        content.innerHTML = buildTable(previewData.new, 'success', 'New');
+    } else if (tab === 'update') {
+        if (!previewData.update.length) { content.innerHTML = '<p class="text-muted small">No existing players will be updated.</p>'; return; }
+        content.innerHTML = buildTable(previewData.update, 'warning', 'Update');
+    } else {
+        if (!previewData.errors.length) { content.innerHTML = '<p class="text-muted small">No errors found.</p>'; return; }
+        content.innerHTML = previewData.errors.map(e => `<div class="alert alert-danger py-1 mb-1 small">${e}</div>`).join('');
+    }
+}
+
+function buildTable(rows, cls, label) {
+    if (!rows.length) return '';
+    return `<table class="table table-sm table-hover mb-0">
+        <thead><tr class="table-${cls}"><th>Last</th><th>First</th><th>Pos</th><th>Year</th><th>Rev Share</th><th>Stipend</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+            <td>${r.last_name}</td><td>${r.first_name}</td>
+            <td>${r.position || '-'}</td><td>${r.year || '-'}</td>
+            <td>$${(r.rev_share||0).toLocaleString()}</td>
+            <td>$${(r.stipend||0).toLocaleString()}</td>
+            <td><strong>$${(r.total||0).toLocaleString()}</strong></td>
+            <td><span class="badge bg-secondary">${r.status||'Signed'}</span></td>
+        </tr>`).join('')}</tbody></table>`;
+}
+
+document.getElementById('previewBtn').addEventListener('click', function() {
+    const fileInput = document.getElementById('csv_file');
+    if (!fileInput.files.length) { alert('Please select a CSV file first.'); return; }
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Previewing...';
+
+    const fd = new FormData();
+    fd.append('csv_file', fileInput.files[0]);
+    fd.append('csrf_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    fetch('/api/import-preview', { method: 'POST', body: fd,
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(data => {
+        previewData = data;
+        document.getElementById('newCount').textContent = data.new.length;
+        document.getElementById('updateCount').textContent = data.update.length;
+        document.getElementById('errorCount').textContent = data.errors.length;
+        document.getElementById('previewSummary').textContent =
+            `${data.new.length} new · ${data.update.length} updates · ${data.errors.length} errors`;
+        document.getElementById('previewSection').classList.remove('d-none');
+        renderPreviewTab('new');
+    })
+    .catch(() => alert('Preview failed. Check the file and try again.'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-eye me-2"></i>Preview Import';
+    });
+});
+
+document.querySelectorAll('#previewTabs .nav-link').forEach(btn => {
+    btn.addEventListener('click', () => renderPreviewTab(btn.dataset.tab));
+});
+</script>
 {% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Budget Cap - UT Football Compensation Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Budget Cap &amp; Position Caps</h3>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Dashboard
+    </a>
+</div>
+
+<!-- Season Budget Form -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header border-bottom">
+        <h6 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Season Budget</h6>
+    </div>
+    <div class="card-body">
+        <form id="budgetForm">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Season</label>
+                    <input type="text" class="form-control" id="capSeason" value="{{ cap.season if cap else '2025-2026' }}" maxlength="20">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Total Budget ($)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="capTotal" step="1000" min="0" value="{{ (cap.total_budget or 0)|int if cap else 0 }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Rev Share Budget ($)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="capRevShare" step="1000" min="0" value="{{ (cap.rev_share_budget or 0)|int if cap else 0 }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Stipend Budget ($)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="capStipend" step="1000" min="0" value="{{ (cap.stipend_budget or 0)|int if cap else 0 }}">
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-ut-gold w-100" id="saveBudget">Save</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Progress Bars -->
+        {% if cap and cap.total_budget > 0 %}
+        <hr class="my-3">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>Total Spent</span>
+                    <span>${{ "{:,.0f}".format(total_spent) }} / ${{ "{:,.0f}".format(cap.total_budget) }}</span>
+                </div>
+                {% set pct = [100, (total_spent / cap.total_budget * 100)|round(1)]|min %}
+                <div class="progress" style="height:14px;">
+                    <div class="progress-bar {% if pct >= 90 %}bg-danger{% elif pct >= 75 %}bg-warning{% else %}bg-success{% endif %}"
+                         style="width:{{ pct }}%;">{{ pct }}%</div>
+                </div>
+            </div>
+            {% if cap.rev_share_budget > 0 %}
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>Rev Share Spent</span>
+                    <span>${{ "{:,.0f}".format(rev_share_spent) }} / ${{ "{:,.0f}".format(cap.rev_share_budget) }}</span>
+                </div>
+                {% set pct = [100, (rev_share_spent / cap.rev_share_budget * 100)|round(1)]|min %}
+                <div class="progress" style="height:14px;">
+                    <div class="progress-bar {% if pct >= 90 %}bg-danger{% elif pct >= 75 %}bg-warning{% else %}bg-info{% endif %}"
+                         style="width:{{ pct }}%;">{{ pct }}%</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if cap.stipend_budget > 0 %}
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>Stipend Spent</span>
+                    <span>${{ "{:,.0f}".format(stipend_spent) }} / ${{ "{:,.0f}".format(cap.stipend_budget) }}</span>
+                </div>
+                {% set pct = [100, (stipend_spent / cap.stipend_budget * 100)|round(1)]|min %}
+                <div class="progress" style="height:14px;">
+                    <div class="progress-bar {% if pct >= 90 %}bg-danger{% elif pct >= 75 %}bg-warning{% else %}bg-primary{% endif %}"
+                         style="width:{{ pct }}%;">{{ pct }}%</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Position Caps -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-person-badge me-2"></i>Position Roster Caps</h6>
+        <button class="btn btn-sm btn-ut-gold" id="savePosCaps">
+            <i class="bi bi-check-lg me-1"></i>Save Position Caps
+        </button>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">Set max number of players per position. <strong>0 = no limit.</strong>
+           Warnings appear on the dashboard and when adding a player.</p>
+        <div class="row g-2">
+            {% for pos in positions %}
+            <div class="col-6 col-md-3 col-lg-2">
+                <label class="form-label small fw-bold mb-1">{{ pos }}</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control pos-cap-input" data-position="{{ pos }}"
+                           min="0" value="{{ pos_caps.get(pos, 0) }}" placeholder="0">
+                    {% if position_counts.get(pos, 0) > 0 %}
+                    <span class="input-group-text small text-muted">{{ position_counts.get(pos, 0) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('saveBudget').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true; btn.textContent = '...';
+    fetch('/api/budget-cap', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+        body: JSON.stringify({
+            season: document.getElementById('capSeason').value,
+            total_budget: parseFloat(document.getElementById('capTotal').value) || 0,
+            rev_share_budget: parseFloat(document.getElementById('capRevShare').value) || 0,
+            stipend_budget: parseFloat(document.getElementById('capStipend').value) || 0,
+        }),
+    })
+    .then(r => r.json())
+    .then(() => { location.reload(); })
+    .catch(() => { alert('Failed to save.'); btn.disabled = false; btn.textContent = 'Save'; });
+});
+
+document.getElementById('savePosCaps').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+    const data = {};
+    document.querySelectorAll('.pos-cap-input').forEach(el => {
+        data[el.dataset.position] = parseInt(el.value) || 0;
+    });
+    fetch('/api/position-caps', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+        body: JSON.stringify(data),
+    })
+    .then(r => r.json())
+    .then(() => {
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Saved!';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Position Caps'; btn.disabled = false; }, 2000);
+    })
+    .catch(() => { alert('Failed to save.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Position Caps'; });
+});
+</script>
+{% endblock %}

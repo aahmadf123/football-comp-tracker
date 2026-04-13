@@ -2,10 +2,608 @@
 {% block title %}Dashboard - UT Football Compensation Tracker{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h3 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h3>
-    <span class="text-muted small">Welcome, {{ current_user.full_name }}</span>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        {% if current_user.can_add_players() %}
+        <button class="btn btn-ut-gold btn-sm" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+            <i class="bi bi-person-plus-fill me-1"></i> Quick Add
+        </button>
+        {% endif %}
+        <a href="{{ url_for('main.depth_chart') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-grid-3x3-gap me-1"></i> Depth Chart
+        </a>
+        <span class="text-muted small">Welcome, {{ current_user.full_name }}</span>
+    </div>
 </div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card stat-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-bold">Total Players</p>
+                        <h3 class="mb-0 fw-bold">{{ total_players }}</h3>
+                    </div>
+                    <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-people-fill"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-bold">Total Comp</p>
+                        {% if current_user.can_see_compensation() %}
+                        <h3 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_compensation) }}</h3>
+                        {% else %}
+                        <h3 class="mb-0 fw-bold text-muted">—</h3>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-currency-dollar"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-bold">Rev Share</p>
+                        {% if current_user.can_see_compensation() %}
+                        <h3 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_rev_share) }}</h3>
+                        {% else %}
+                        <h3 class="mb-0 fw-bold text-muted">—</h3>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon bg-info-subtle text-info"><i class="bi bi-pie-chart-fill"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card stat-card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small text-uppercase fw-bold">Stipend</p>
+                        {% if current_user.can_see_compensation() %}
+                        <h3 class="mb-0 fw-bold">${{ "{:,.0f}".format(total_stipend) }}</h3>
+                        {% else %}
+                        <h3 class="mb-0 fw-bold text-muted">—</h3>
+                        {% endif %}
+                    </div>
+                    <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-wallet2"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.can_see_compensation() %}
+<!-- Budget Cap Tracker -->
+{% if budget_cap and budget_cap.total_budget > 0 %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Season Budget — {{ budget_cap.season }}</h6>
+        {% if current_user.can_manage_caps() %}
+        <a href="{{ url_for('main.budget_cap_page') }}" class="btn btn-sm btn-outline-secondary">Manage</a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Total Compensation</span>
+                    <span>${{ "{:,.0f}".format(total_compensation) }} / ${{ "{:,.0f}".format(budget_cap.total_budget) }}</span>
+                </div>
+                <div class="progress" style="height:12px;">
+                    <div class="progress-bar {% if budget_pct >= 90 %}bg-danger{% elif budget_pct >= 75 %}bg-warning{% else %}bg-success{% endif %}"
+                         style="width:{{ budget_pct }}%;" title="{{ budget_pct }}%"></div>
+                </div>
+                <div class="text-end small mt-1 text-muted">{{ budget_pct }}%</div>
+            </div>
+            {% if budget_cap.rev_share_budget > 0 %}
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Rev Share</span>
+                    <span>${{ "{:,.0f}".format(total_rev_share) }} / ${{ "{:,.0f}".format(budget_cap.rev_share_budget) }}</span>
+                </div>
+                <div class="progress" style="height:12px;">
+                    <div class="progress-bar {% if rev_share_pct >= 90 %}bg-danger{% elif rev_share_pct >= 75 %}bg-warning{% else %}bg-info{% endif %}"
+                         style="width:{{ rev_share_pct }}%;"></div>
+                </div>
+                <div class="text-end small mt-1 text-muted">{{ rev_share_pct }}%</div>
+            </div>
+            {% endif %}
+            {% if budget_cap.stipend_budget > 0 %}
+            <div class="col-md-4">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Stipend</span>
+                    <span>${{ "{:,.0f}".format(total_stipend) }} / ${{ "{:,.0f}".format(budget_cap.stipend_budget) }}</span>
+                </div>
+                <div class="progress" style="height:12px;">
+                    <div class="progress-bar {% if stipend_pct >= 90 %}bg-danger{% elif stipend_pct >= 75 %}bg-warning{% else %}bg-primary{% endif %}"
+                         style="width:{{ stipend_pct }}%;"></div>
+                </div>
+                <div class="text-end small mt-1 text-muted">{{ stipend_pct }}%</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+{% if current_user.can_manage_caps() %}
+<div class="alert alert-info small mb-4 py-2">
+    <i class="bi bi-info-circle me-1"></i>
+    No season budget set. <a href="{{ url_for('main.budget_cap_page') }}" class="alert-link">Configure budget cap</a> to track spending.
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+
+<!-- Position Cap Warnings -->
+{% if position_cap_warnings %}
+<div class="alert alert-warning mb-4 py-2">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Position Cap Reached:</strong>
+    {% for w in position_cap_warnings %}
+    <span class="badge bg-warning text-dark ms-1">{{ w.position }} {{ w.count }}/{{ w.max }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Contract Expiry Alerts -->
+{% if expiring_contracts %}
+<div class="card border-0 shadow-sm mb-4 border-warning-subtle">
+    <div class="card-header border-bottom" style="border-left: 3px solid var(--color-warning) !important;">
+        <h6 class="mb-0 text-warning"><i class="bi bi-clock-fill me-2"></i>Contract Expiry Alerts ({{ expiring_contracts|length }})</h6>
+    </div>
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2">
+            {% for c in expiring_contracts %}
+            <a href="{{ url_for('main.player_profile', player_id=c.id) }}" class="text-decoration-none">
+                <span class="badge {% if c.days_until_expiry <= 14 %}bg-danger{% elif c.days_until_expiry <= 30 %}bg-warning text-dark{% else %}bg-secondary{% endif %} p-2">
+                    <i class="bi bi-person me-1"></i>{{ c.name }}
+                    <span class="badge bg-dark ms-1">{{ c.position }}</span>
+                    <small class="ms-1">{{ c.days_until_expiry }}d</small>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Roster Search + Mini Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="mb-0"><i class="bi bi-people-fill me-2"></i>Roster</h6>
+        <div class="d-flex gap-2 align-items-center">
+            <input type="text" id="dashSearch" placeholder="Search players&hellip;" class="form-control form-control-sm" style="width:200px;">
+            <a href="{{ url_for('main.players') }}" class="btn btn-sm btn-outline-secondary">Full View</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="dashRoster" class="table table-hover table-sm mb-0" style="width:100%">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Last</th><th>First</th><th>Pos</th><th>Year</th><th>Campus</th>
+                        <th>Status</th>
+                        {% if current_user.can_see_compensation() %}<th>Total</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+{% if current_user.can_see_compensation() and total_players > 0 %}
+<div class="row g-3 mb-4">
+    <!-- Compensation by Position Bar -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>Compensation by Position</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="positionChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Campus + Status Doughnuts -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-building me-2"></i>Campus Split</h6></div>
+            <div class="card-body"><canvas id="campusChart" height="160"></canvas></div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Contract Status</h6></div>
+            <div class="card-body"><canvas id="statusChart" height="160"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Rev Share vs Stipend & Year Distribution -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-layers-fill me-2"></i>Rev Share vs Stipend by Position</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="revStipChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-mortarboard-fill me-2"></i>Year Class</h6></div>
+            <div class="card-body"><canvas id="yearChart" height="240"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Players -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-trophy-fill me-2 text-ut-gold"></i>Top 10 by Compensation</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <tbody>
+                        {% for p in top_players %}
+                        <tr>
+                            <td class="ps-3"><span class="text-muted small">{{ loop.index }}</span></td>
+                            <td>
+                                <a href="{{ url_for('main.player_profile', player_id=p.id) }}" class="text-decoration-none">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td><span class="badge bg-ut-blue">{{ p.position }}</span></td>
+                            <td class="text-muted small">{{ p.year }}</td>
+                            <td class="text-end pe-3 fw-bold money-positive">${{ "{:,.0f}".format(p.total or 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+{% else %}
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+{% endif %}
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Position Breakdown</h6>
+            </div>
+            <div class="card-body" style="max-height:320px;overflow-y:auto;">
+                {% if position_totals %}
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Position</th><th class="text-center">Players</th>
+                        {% if current_user.can_see_compensation() %}<th class="text-end">Total</th>{% endif %}
+                    </tr></thead>
+                    <tbody>
+                        {% for pos, total in position_totals.items()|sort(attribute='1', reverse=true) %}
+                        <tr>
+                            <td><span class="badge bg-ut-blue">{{ pos }}</span></td>
+                            <td class="text-center">{{ position_counts.get(pos, 0) }}</td>
+                            {% if current_user.can_see_compensation() %}
+                            <td class="text-end">${{ "{:,.0f}".format(total) }}</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted small">No player data yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breakdowns + Recent Activity -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-building me-2"></i>Campus</h6></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2"><span>On Campus</span><span class="badge bg-success rounded-pill">{{ on_campus }}</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>Off Campus</span><span class="badge bg-secondary rounded-pill">{{ off_campus }}</span></div>
+                {% if total_players > 0 %}
+                <div class="progress mt-3" style="height:10px;">
+                    <div class="progress-bar bg-success" style="width:{{ (on_campus/total_players*100)|round(1) }}%"></div>
+                    <div class="progress-bar bg-secondary" style="width:{{ (off_campus/total_players*100)|round(1) }}%"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Contract Length</h6></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2"><span>6 Months</span><span class="badge bg-info rounded-pill">{{ six_month }}</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>12 Months</span><span class="badge bg-primary rounded-pill">{{ twelve_month }}</span></div>
+                {% if total_players > 0 %}
+                <div class="progress mt-3" style="height:10px;">
+                    <div class="progress-bar bg-info" style="width:{{ (six_month/total_players*100)|round(1) }}%"></div>
+                    <div class="progress-bar bg-primary" style="width:{{ (twelve_month/total_players*100)|round(1) }}%"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom"><h6 class="mb-0"><i class="bi bi-mortarboard me-2"></i>By Year</h6></div>
+            <div class="card-body">
+                {% for year, count in year_counts.items()|sort %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span>{{ year }}</span>
+                    <span class="badge bg-ut-blue rounded-pill">{{ count }}</span>
+                </div>
+                {% else %}
+                <p class="text-muted small">No data.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header border-bottom">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Activity</h6>
+    </div>
+    <div class="card-body" style="max-height:320px;overflow-y:auto;">
+        {% if recent_logs %}
+        {% for log in recent_logs %}
+        <div class="d-flex align-items-start mb-3">
+            <div class="me-3">
+                {% if log.action == 'create' %}<span class="badge bg-success rounded-pill"><i class="bi bi-plus-circle"></i></span>
+                {% elif log.action == 'update' %}<span class="badge bg-warning rounded-pill"><i class="bi bi-pencil"></i></span>
+                {% elif log.action == 'delete' %}<span class="badge bg-danger rounded-pill"><i class="bi bi-trash"></i></span>
+                {% elif log.action == 'upload' %}<span class="badge bg-info rounded-pill"><i class="bi bi-cloud-upload"></i></span>
+                {% elif log.action == 'login' %}<span class="badge bg-primary rounded-pill"><i class="bi bi-box-arrow-in-right"></i></span>
+                {% else %}<span class="badge bg-secondary rounded-pill"><i class="bi bi-activity"></i></span>
+                {% endif %}
+            </div>
+            <div class="flex-grow-1">
+                <p class="mb-0 small"><strong>{{ log.user.full_name if log.user else 'Unknown' }}</strong> &mdash; {{ log.details or log.action }}</p>
+                <small class="text-muted">{{ log.timestamp.strftime('%m/%d/%Y %I:%M %p') }}</small>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted small">No recent activity.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Add Modal (minimal) -->
+{% if current_user.can_add_players() %}
+<div class="modal fade" id="quickAddModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-ut-blue text-white">
+                <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i>Quick Add Player</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Player will be added and visible in the full Players page.</p>
+                <form id="quickAddForm">
+                    <div class="row g-2">
+                        <div class="col-6"><input type="text" class="form-control" name="first_name" placeholder="First Name" required maxlength="100"></div>
+                        <div class="col-6"><input type="text" class="form-control" name="last_name" placeholder="Last Name" required maxlength="100"></div>
+                        <div class="col-6">
+                            <select class="form-select" name="position">
+                                <option value="">Position</option>
+                                {% for pos in ['QB','RB','WR','TE','OL','DL','LB','CB','S','K','P'] %}
+                                <option value="{{ pos }}">{{ pos }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select class="form-select" name="year">
+                                <option value="">Year</option>
+                                {% for yr in ['FR','SO','JR','SR','RS FR','RS SO','RS JR','RS SR','GR'] %}
+                                <option value="{{ yr }}">{{ yr }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select class="form-select" name="status">
+                                <option value="Offered">Offered</option>
+                                <option value="Negotiating">Negotiating</option>
+                                <option value="Signed" selected>Signed</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select class="form-select" name="on_off_campus">
+                                <option value="">Campus</option>
+                                <option value="On">On Campus</option>
+                                <option value="Off">Off Campus</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-ut-gold" id="saveQuickAdd">
+                    <i class="bi bi-check-lg me-1"></i>Add & Go to Players
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Dashboard Roster Table ----
+let dashTable;
+$(document).ready(function () {
+    dashTable = $('#dashRoster').DataTable({
+        ajax: { url: '/api/players', dataSrc: '' },
+        columns: [
+            { data: 'last_name' },
+            { data: 'first_name' },
+            { data: 'position', render: d => d ? `<span class="badge bg-ut-blue">${d}</span>` : '-' },
+            { data: 'year' },
+            { data: 'on_off_campus', render: d => d === 'On' ? '<span class="badge bg-success">On</span>' : d === 'Off' ? '<span class="badge bg-secondary">Off</span>' : '-' },
+            { data: 'status', render: d => {
+                const cls = {Signed:'bg-success', Offered:'bg-info', Negotiating:'bg-warning text-dark', Declined:'bg-danger'}[d] || 'bg-secondary';
+                return `<span class="badge ${cls}">${d||'Signed'}</span>`;
+            }},
+            {% if current_user.can_see_compensation() %}
+            { data: 'total', render: d => `<strong class="money-positive">$${(parseFloat(d)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong>` },
+            {% endif %}
+        ],
+        order: [[0,'asc']],
+        pageLength: 15,
+        lengthMenu: [[10,15,25,50,-1],[10,15,25,50,'All']],
+        dom: 'rt<"d-flex justify-content-between px-3 pb-2"ip>',
+        language: { emptyTable: 'No players. Upload a CSV or add a player to begin.' },
+        scrollX: true,
+    });
+
+    // Quick search wired to dashboard table
+    $('#dashSearch').on('keyup', function() {
+        dashTable.search(this.value).draw();
+    });
+});
+
+{% if current_user.can_see_compensation() and total_players > 0 %}
+// ---- Chart.js Data ----
+const posChartData = {{ pos_chart | tojson }};
+const revChartData = {{ rev_chart | tojson }};
+const yearData     = {{ year_counts | tojson }};
+const campusData   = { on: {{ on_campus }}, off: {{ off_campus }} };
+const statusData   = {{ status_counts | tojson }};
+
+const GOLD = '#FFCE00', BLUE = '#3b82f6', GREEN = '#34d399', RED = '#f87171', ORANGE = '#fb923c', PURPLE = '#a78bfa';
+
+// Position bar chart
+new Chart(document.getElementById('positionChart'), {
+    type: 'bar',
+    data: {
+        labels: posChartData.map(d => d.pos),
+        datasets: [{
+            label: 'Total Compensation',
+            data: posChartData.map(d => d.total),
+            backgroundColor: posChartData.map((_, i) => `hsl(${45 + i * 18}, 90%, 55%)`),
+            borderRadius: 6,
+        }],
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` $${ctx.raw.toLocaleString()}` } } },
+        scales: {
+            x: { ticks: { color: '#8b92a8', callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'K' : v) }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#e4e8f1', font: { size: 11 } }, grid: { display: false } },
+        },
+    },
+});
+
+// Campus doughnut
+new Chart(document.getElementById('campusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['On Campus', 'Off Campus'],
+        datasets: [{ data: [campusData.on, campusData.off], backgroundColor: [GREEN, '#3d4663'], borderWidth: 0, hoverOffset: 6 }],
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#8b92a8', boxWidth: 12, padding: 8 } } } },
+});
+
+// Status doughnut
+const statusLabels = Object.keys(statusData);
+const statusColors = { Signed: GREEN, Offered: BLUE, Negotiating: ORANGE, Declined: RED };
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: statusLabels,
+        datasets: [{ data: statusLabels.map(k => statusData[k]), backgroundColor: statusLabels.map(k => statusColors[k] || '#8b92a8'), borderWidth: 0, hoverOffset: 6 }],
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#8b92a8', boxWidth: 12, padding: 8 } } } },
+});
+
+// Rev Share vs Stipend stacked bar
+new Chart(document.getElementById('revStipChart'), {
+    type: 'bar',
+    data: {
+        labels: revChartData.map(d => d.pos),
+        datasets: [
+            { label: 'Rev Share', data: revChartData.map(d => d.rev), backgroundColor: GOLD, borderRadius: { topLeft: 4, topRight: 4 } },
+            { label: 'Stipend',   data: revChartData.map(d => d.stip), backgroundColor: BLUE, borderRadius: { bottomLeft: 4, bottomRight: 4 } },
+        ],
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top', labels: { color: '#8b92a8' } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.raw.toLocaleString()}` } } },
+        scales: {
+            x: { stacked: true, ticks: { color: '#8b92a8' }, grid: { display: false } },
+            y: { stacked: true, ticks: { color: '#8b92a8', callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'K' : v) }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        },
+    },
+});
+
+// Year distribution bar
+const yearLabels = Object.keys(yearData).sort();
+new Chart(document.getElementById('yearChart'), {
+    type: 'bar',
+    data: {
+        labels: yearLabels,
+        datasets: [{ label: 'Players', data: yearLabels.map(k => yearData[k]), backgroundColor: PURPLE, borderRadius: 6 }],
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#8b92a8', font: { size: 10 } }, grid: { display: false } },
+            y: { ticks: { color: '#8b92a8', precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        },
+    },
+});
+{% endif %}
+
+// ---- Quick Add ----
+$('#saveQuickAdd').on('click', function() {
+    const form = $('#quickAddForm')[0];
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const btn = $(this);
+    btn.prop('disabled', true).html('<i class="bi bi-hourglass-split me-1"></i>Saving...');
+    const fd = new FormData(form);
+    const data = {};
+    fd.forEach((v, k) => data[k] = v);
+    data.rev_share = 0; data.stipend = 0; data.contract_length = '';
+    $.ajax({
+        url: '/api/players', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: () => { window.location.href = '/players'; },
+        error: xhr => {
+            const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to add player.';
+            alert(msg);
+            btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>Add & Go to Players');
+        },
+    });
+});
+</script>
+{% endblock %}
 
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
@@ -75,8 +673,7 @@
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom">
-                <h6 class="mb-0"><i class="bi bi-building me-2"></i>Campus Status</h6>
+            <div class="card-header border-bottom">
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
@@ -98,7 +695,7 @@
     </div>
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <h6 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Contract Length</h6>
             </div>
             <div class="card-body">
@@ -121,7 +718,7 @@
     </div>
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <h6 class="mb-0"><i class="bi bi-mortarboard me-2"></i>By Year</h6>
             </div>
             <div class="card-body">
@@ -143,7 +740,7 @@
 <div class="row g-3">
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Compensation by Position</h6>
             </div>
             <div class="card-body" style="max-height: 350px; overflow-y: auto;">
@@ -170,7 +767,7 @@
     </div>
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Activity</h6>
             </div>
             <div class="card-body" style="max-height: 350px; overflow-y: auto;">

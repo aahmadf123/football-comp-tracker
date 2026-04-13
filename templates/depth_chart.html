@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Depth Chart - UT Football{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h3 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Depth Chart</h3>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print
+        </button>
+        <a href="{{ url_for('main.players') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Roster
+        </a>
+    </div>
+</div>
+
+{% if not players_by_position %}
+<div class="alert alert-info">No players in the roster yet. <a href="{{ url_for('main.players') }}">Add players</a> to see the depth chart.</div>
+{% else %}
+<div class="depth-chart-grid">
+    {% for pos in positions %}
+    {% if pos in players_by_position %}
+    <div class="depth-group card border-0 shadow-sm mb-3">
+        <div class="card-header border-bottom depth-pos-header">
+            <span class="badge bg-ut-gold text-dark fs-6 me-2">{{ pos }}</span>
+            <small class="text-muted">{{ players_by_position[pos]|length }} player{{ 's' if players_by_position[pos]|length != 1 }}</small>
+        </div>
+        <div class="card-body p-2">
+            {% for player in players_by_position[pos] %}
+            <div class="depth-player-row d-flex align-items-center justify-content-between px-2 py-2 rounded mb-1">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="depth-rank text-muted small">{{ loop.index }}</span>
+                    <div>
+                        <a href="{{ url_for('main.player_profile', player_id=player.id) }}"
+                           class="fw-semibold text-decoration-none d-print-text">
+                            {{ player.first_name }} {{ player.last_name }}
+                        </a>
+                        <div class="small text-muted">{{ player.year or '—' }}</div>
+                    </div>
+                </div>
+                <div class="text-end">
+                    {% set sclass = {'Signed':'bg-success','Offered':'bg-info','Negotiating':'bg-warning text-dark','Declined':'bg-danger'} %}
+                    <span class="badge {{ sclass.get(player.status, 'bg-secondary') }} small">{{ player.status or 'Signed' }}</span>
+                    {% if player.on_off_campus %}
+                    <span class="badge {% if player.on_off_campus == 'On' %}bg-success{% else %}bg-secondary{% endif %} small ms-1">{{ player.on_off_campus }}</span>
+                    {% endif %}
+                    {% if can_see_comp and player.total %}
+                    <div class="small money-positive mt-1">${{ "{:,.0f}".format(player.total) }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

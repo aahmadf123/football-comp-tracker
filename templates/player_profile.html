@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}{{ player.first_name }} {{ player.last_name }} - Profile{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.players') }}">Players</a></li>
+                <li class="breadcrumb-item active">{{ player.first_name }} {{ player.last_name }}</li>
+            </ol>
+        </nav>
+        <h3 class="mb-0">
+            {{ player.first_name }} {{ player.last_name }}
+            <span class="badge bg-ut-blue ms-2">{{ player.position }}</span>
+            {% set sclass = {'Signed':'bg-success','Offered':'bg-info','Negotiating':'bg-warning text-dark','Declined':'bg-danger'} %}
+            <span class="badge {{ sclass.get(player.status, 'bg-secondary') }} ms-1">{{ player.status or 'Signed' }}</span>
+        </h3>
+    </div>
+    <div class="d-flex gap-2">
+        {% if current_user.can_edit_players() %}
+        <button class="btn btn-ut-gold btn-sm" id="editFromProfileBtn">
+            <i class="bi bi-pencil me-1"></i> Edit Player
+        </button>
+        {% endif %}
+        <a href="{{ url_for('main.players') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Roster
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Info Card -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-person-circle me-2"></i>Player Details</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5 text-muted small">Position</dt>
+                    <dd class="col-7"><span class="badge bg-ut-blue">{{ player.position or '—' }}</span></dd>
+
+                    <dt class="col-5 text-muted small">Year</dt>
+                    <dd class="col-7">{{ player.year or '—' }}</dd>
+
+                    <dt class="col-5 text-muted small">Campus</dt>
+                    <dd class="col-7">
+                        {% if player.on_off_campus == 'On' %}<span class="badge bg-success">On Campus</span>
+                        {% elif player.on_off_campus == 'Off' %}<span class="badge bg-secondary">Off Campus</span>
+                        {% else %}—{% endif %}
+                    </dd>
+
+                    <dt class="col-5 text-muted small">Status</dt>
+                    <dd class="col-7">
+                        {% set sclass = {'Signed':'bg-success','Offered':'bg-info','Negotiating':'bg-warning text-dark','Declined':'bg-danger'} %}
+                        <span class="badge {{ sclass.get(player.status, 'bg-secondary') }}">{{ player.status or 'Signed' }}</span>
+                    </dd>
+
+                    <dt class="col-5 text-muted small">Contract</dt>
+                    <dd class="col-7">{{ player.contract_length or '—' }}</dd>
+
+                    {% if player.contract_start_date %}
+                    <dt class="col-5 text-muted small">Start Date</dt>
+                    <dd class="col-7">{{ player.contract_start_date.strftime('%m/%d/%Y') }}</dd>
+                    {% endif %}
+
+                    {% if player.contract_end_date %}
+                    <dt class="col-5 text-muted small">End Date</dt>
+                    <dd class="col-7">
+                        {{ player.contract_end_date.strftime('%m/%d/%Y') }}
+                        {% if player.days_until_expiry is not none %}
+                        {% if player.days_until_expiry <= 0 %}
+                        <span class="badge bg-danger ms-1">Expired</span>
+                        {% elif player.days_until_expiry <= 14 %}
+                        <span class="badge bg-danger ms-1">{{ player.days_until_expiry }}d left</span>
+                        {% elif player.days_until_expiry <= 60 %}
+                        <span class="badge bg-warning text-dark ms-1">{{ player.days_until_expiry }}d left</span>
+                        {% endif %}
+                        {% endif %}
+                    </dd>
+                    {% endif %}
+
+                    {% if can_see_comp %}
+                    <dt class="col-5 text-muted small mt-2">Rev Share</dt>
+                    <dd class="col-7 mt-2 money-positive">${{ "{:,.2f}".format(player.rev_share or 0) }}</dd>
+
+                    <dt class="col-5 text-muted small">Stipend</dt>
+                    <dd class="col-7 money-positive">${{ "{:,.2f}".format(player.stipend or 0) }}</dd>
+
+                    <dt class="col-5 text-muted small fw-bold">Total</dt>
+                    <dd class="col-7 fw-bold money-positive">${{ "{:,.2f}".format(player.total or 0) }}</dd>
+                    {% endif %}
+
+                    {% if player.notes %}
+                    <dt class="col-5 text-muted small mt-2">Notes</dt>
+                    <dd class="col-7 mt-2 small">{{ player.notes }}</dd>
+                    {% endif %}
+
+                    <dt class="col-5 text-muted small mt-2">Last Updated</dt>
+                    <dd class="col-7 mt-2 small text-muted">{{ player.updated_at.strftime('%m/%d/%Y %I:%M %p') if player.updated_at else '—' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compensation History Chart -->
+    <div class="col-md-8">
+        {% if can_see_comp and history %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Compensation History</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="historyChart" height="180"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- History timeline -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header border-bottom">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Change History ({{ history|length }} entries)</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if history %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Date</th><th>By</th><th>Position</th><th>Year</th><th>Status</th>
+                                {% if can_see_comp %}<th>Rev Share</th><th>Stipend</th><th>Total</th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in history|reverse %}
+                            <tr>
+                                <td class="small text-muted">{{ h.changed_at.strftime('%m/%d/%Y') }}</td>
+                                <td class="small">{{ h.changed_by_user.full_name if h.changed_by_user else 'System' }}</td>
+                                <td><span class="badge bg-ut-blue">{{ h.position or '—' }}</span></td>
+                                <td class="small">{{ h.year or '—' }}</td>
+                                <td>
+                                    {% set sclass = {'Signed':'bg-success','Offered':'bg-info','Negotiating':'bg-warning text-dark','Declined':'bg-danger'} %}
+                                    <span class="badge {{ sclass.get(h.status, 'bg-secondary') }} small">{{ h.status or '—' }}</span>
+                                </td>
+                                {% if can_see_comp %}
+                                <td class="small money-positive">${{ "{:,.0f}".format(h.rev_share or 0) }}</td>
+                                <td class="small money-positive">${{ "{:,.0f}".format(h.stipend or 0) }}</td>
+                                <td class="small fw-bold money-positive">${{ "{:,.0f}".format(h.total or 0) }}</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small p-3 mb-0">No history recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if can_see_comp and history %}
+<script>
+const historyData = {{ history | map(attribute='to_dict') | list | tojson }};
+if (historyData.length > 1) {
+    new Chart(document.getElementById('historyChart'), {
+        type: 'line',
+        data: {
+            labels: historyData.map(h => h.changed_at.split(' ')[0]),
+            datasets: [
+                {
+                    label: 'Total',
+                    data: historyData.map(h => h.total),
+                    borderColor: '#FFCE00', backgroundColor: 'rgba(255,206,0,0.1)',
+                    fill: true, tension: 0.3, pointRadius: 5,
+                },
+                {
+                    label: 'Rev Share',
+                    data: historyData.map(h => h.rev_share),
+                    borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.05)',
+                    fill: false, tension: 0.3, pointRadius: 4, borderDash: [4,3],
+                },
+                {
+                    label: 'Stipend',
+                    data: historyData.map(h => h.stipend),
+                    borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.05)',
+                    fill: false, tension: 0.3, pointRadius: 4, borderDash: [4,3],
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top', labels: { color: '#8b92a8' } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.raw.toLocaleString()}` } },
+            },
+            scales: {
+                x: { ticks: { color: '#8b92a8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#8b92a8', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            },
+        },
+    });
+}
+</script>
+{% endif %}
+{% endblock %}

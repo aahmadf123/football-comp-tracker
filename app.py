@@ -11,6 +11,22 @@ from auth import auth_bp, hash_password
 from routes import main_bp
 
 
+def _run_migrations(engine):
+    """Add new columns to existing tables without dropping data (SQLite compatible)."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE players ADD COLUMN status VARCHAR(20) DEFAULT 'Signed'",
+        "ALTER TABLE players ADD COLUMN contract_start_date DATE",
+    ]
+    with engine.connect() as conn:
+        for stmt in migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists — safe to ignore
+
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -69,6 +85,7 @@ def create_app():
     # Create database tables and default admin user
     with app.app_context():
         db.create_all()
+        _run_migrations(db.engine)
         if not User.query.filter_by(username="admin").first():
             admin = User(
                 username="admin",

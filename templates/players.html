@@ -10,6 +10,9 @@
             <i class="bi bi-person-plus-fill me-1"></i> Add Player
         </button>
         {% endif %}
+        <a href="{{ url_for('main.depth_chart') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-grid-3x3-gap me-1"></i> Depth Chart
+        </a>
         <a href="{{ url_for('main.export') }}" class="btn btn-outline-secondary">
             <i class="bi bi-download me-1"></i> Export CSV
         </a>
@@ -56,8 +59,21 @@
                 </select>
             </div>
             <div class="col-auto">
+                <select id="filterStatus" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    {% for s in status_options %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
                 <button id="clearFilters" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+            </div>
+            <div class="col-auto ms-auto">
+                <button id="toggleGroupBy" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-collection me-1"></i>Group by Position
                 </button>
             </div>
         </div>
@@ -76,10 +92,13 @@
                         <th>Position</th>
                         <th>Year</th>
                         <th>Campus</th>
+                        <th>Status</th>
+                        {% if can_see_comp %}
                         <th>Rev Share $</th>
                         <th>Contract</th>
                         <th>Stipend</th>
                         <th>Total</th>
+                        {% endif %}
                         <th>Notes</th>
                         <th>Last Updated</th>
                         <th class="text-center no-sort">Actions</th>
@@ -88,12 +107,16 @@
                 <tbody></tbody>
                 <tfoot>
                     <tr class="table-warning fw-bold">
-                        <td colspan="5" class="text-end">Totals:</td>
+                        {% if can_see_comp %}
+                        <td colspan="6" class="text-end">Totals:</td>
                         <td id="totalRevShare">$0.00</td>
                         <td></td>
                         <td id="totalStipend">$0.00</td>
                         <td id="totalComp">$0.00</td>
                         <td colspan="3"></td>
+                        {% else %}
+                        <td colspan="9"></td>
+                        {% endif %}
                     </tr>
                 </tfoot>
             </table>
@@ -139,6 +162,14 @@
                             </select>
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                {% for s in status_options %}
+                                <option value="{{ s }}" {% if s == 'Signed' %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">On/Off Campus</label>
                             <select class="form-select" name="on_off_campus">
                                 <option value="">Select...</option>
@@ -147,14 +178,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Rev Share $</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" name="rev_share" step="0.01" min="0" value="0">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Contract Length</label>
                             <select class="form-select" name="contract_length">
                                 <option value="">Select...</option>
@@ -163,17 +187,33 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Contract Start Date</label>
+                            <input type="date" class="form-control" name="contract_start_date">
+                        </div>
+                        {% if can_see_comp %}
+                        <div class="col-md-3">
+                            <label class="form-label">Rev Share $</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="rev_share" step="0.01" min="0" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">Stipend</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" class="form-control" name="stipend" step="0.01" min="0" value="0">
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-12">
                             <label class="form-label">Notes</label>
                             <textarea class="form-control" name="notes" rows="2" maxlength="500"></textarea>
                         </div>
+                    </div>
+                    <div id="posCapWarning" class="alert alert-warning mt-3 mb-0 d-none small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="posCapMsg"></span>
                     </div>
                 </form>
             </div>
@@ -226,6 +266,14 @@
                             </select>
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status" id="editStatus">
+                                {% for s in status_options %}
+                                <option value="{{ s }}">{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">On/Off Campus</label>
                             <select class="form-select" name="on_off_campus" id="editCampus">
                                 <option value="">Select...</option>
@@ -234,14 +282,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Rev Share $</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" name="rev_share" id="editRevShare" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Contract Length</label>
                             <select class="form-select" name="contract_length" id="editContract">
                                 <option value="">Select...</option>
@@ -250,13 +291,26 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Contract Start Date</label>
+                            <input type="date" class="form-control" name="contract_start_date" id="editContractStart">
+                        </div>
+                        {% if can_see_comp %}
+                        <div class="col-md-3">
+                            <label class="form-label">Rev Share $</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="rev_share" id="editRevShare" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">Stipend</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="number" class="form-control" name="stipend" id="editStipend" step="0.01" min="0">
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-12">
                             <label class="form-label">Notes</label>
                             <textarea class="form-control" name="notes" id="editNotes" rows="2" maxlength="500"></textarea>
@@ -299,5 +353,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+window.canSeeComp = {{ 'true' if can_see_comp else 'false' }};
+</script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}
