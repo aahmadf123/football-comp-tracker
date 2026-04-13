@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Upload CSV - UT Football Compensation Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h3 class="mb-4"><i class="bi bi-cloud-upload me-2"></i>Upload CSV</h3>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.upload_csv') }}">
+                    {{ csrf_token() | safe if csrf_token is defined else '' }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label fw-bold">Select CSV File</label>
+                        <input type="file" class="form-control" name="csv_file" id="csv_file" accept=".csv" required>
+                        <div class="form-text">Only .csv files up to 5MB are accepted.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="replace_data" id="replace_data">
+                            <label class="form-check-label" for="replace_data">
+                                <strong class="text-danger">Replace all existing data</strong>
+                                <br><small class="text-muted">If unchecked, new records will be appended to existing data.</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-ut-gold btn-lg" id="uploadBtn">
+                        <i class="bi bi-cloud-upload me-2"></i>Upload & Import
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CSV Format Guide -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>CSV Format Guide</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">Your CSV file should have these column headers:</p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Column</th>
+                                <th>Required</th>
+                                <th>Format</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Last Name</td><td><span class="badge bg-danger">Required</span></td><td>Text</td><td>Smith</td></tr>
+                            <tr><td>First Name</td><td><span class="badge bg-danger">Required</span></td><td>Text</td><td>John</td></tr>
+                            <tr><td>Position</td><td>Optional</td><td>QB, RB, WR, TE, OL, DL, LB, CB, S, K, P, etc.</td><td>QB</td></tr>
+                            <tr><td>Year</td><td>Optional</td><td>FR, SO, JR, SR, RS FR, RS SO, RS JR, RS SR, GR</td><td>JR</td></tr>
+                            <tr><td>On/Off Campus</td><td>Optional</td><td>On or Off</td><td>On</td></tr>
+                            <tr><td>Rev Share $</td><td>Optional</td><td>Number (can include $, commas)</td><td>$1,500.00</td></tr>
+                            <tr><td>Contract Length</td><td>Optional</td><td>6 months or 12 months</td><td>12 months</td></tr>
+                            <tr><td>Stipend</td><td>Optional</td><td>Number (can include $, commas)</td><td>$500.00</td></tr>
+                            <tr><td>Total</td><td>Auto-calculated</td><td>Rev Share + Stipend</td><td>$2,000.00</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="alert alert-info small mt-3 mb-0">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    <strong>Tip:</strong> The Total column is automatically calculated (Rev Share + Stipend). 
+                    You can include it in your CSV but it will be recalculated on import.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,331 @@
+/* ===================================================
+   University of Toledo Football Compensation Tracker
+   Brand Colors: Midnight Blue (#00205C) & Gold (#FFCE00)
+   =================================================== */
+
+:root {
+    --ut-blue: #00205C;
+    --ut-blue-dark: #001740;
+    --ut-blue-light: #0a3a8a;
+    --ut-gold: #FFCE00;
+    --ut-gold-dark: #e0b600;
+    --ut-gold-light: #ffe14d;
+}
+
+/* --- Global --- */
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f4f6f9;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* --- Brand Utilities --- */
+.bg-ut-blue {
+    background-color: var(--ut-blue) !important;
+}
+
+.bg-ut-gold {
+    background-color: var(--ut-gold) !important;
+    color: var(--ut-blue) !important;
+}
+
+.text-ut-gold {
+    color: var(--ut-gold) !important;
+}
+
+.text-ut-blue {
+    color: var(--ut-blue) !important;
+}
+
+.badge.bg-ut-blue {
+    background-color: var(--ut-blue) !important;
+}
+
+.badge.bg-ut-gold {
+    background-color: var(--ut-gold) !important;
+    color: var(--ut-blue) !important;
+}
+
+/* --- Buttons --- */
+.btn-ut-gold {
+    background-color: var(--ut-gold);
+    color: var(--ut-blue);
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-ut-gold:hover {
+    background-color: var(--ut-gold-dark);
+    color: var(--ut-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 206, 0, 0.3);
+}
+
+.btn-ut-gold:active {
+    transform: translateY(0);
+}
+
+.btn-ut-blue {
+    background-color: var(--ut-blue);
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+
+.btn-ut-blue:hover {
+    background-color: var(--ut-blue-light);
+    color: white;
+}
+
+/* --- Navbar --- */
+.navbar-dark.bg-ut-blue {
+    box-shadow: 0 2px 10px rgba(0, 32, 92, 0.3);
+}
+
+.navbar-dark .navbar-brand {
+    font-size: 1.15rem;
+}
+
+.navbar-dark .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    margin: 0 2px;
+}
+
+.navbar-dark .nav-link:hover,
+.navbar-dark .nav-link.active {
+    color: var(--ut-gold);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Login Page --- */
+.login-body {
+    background: linear-gradient(135deg, var(--ut-blue) 0%, var(--ut-blue-dark) 50%, #000e2a 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+}
+
+.login-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.login-header {
+    background: var(--ut-blue);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+}
+
+.login-icon {
+    font-size: 3rem;
+    color: var(--ut-gold);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.login-body-form {
+    padding: 2rem;
+}
+
+.login-footer {
+    text-align: center;
+    padding: 1rem 2rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+/* --- Cards --- */
+.card {
+    border-radius: 12px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* --- DataTables Customization --- */
+#playersTable {
+    font-size: 0.9rem;
+}
+
+#playersTable thead th {
+    background-color: var(--ut-blue);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+    padding: 12px 10px;
+    white-space: nowrap;
+}
+
+#playersTable tbody td {
+    vertical-align: middle;
+    padding: 8px 10px;
+}
+
+#playersTable tbody tr:hover {
+    background-color: #fff8dd !important;
+}
+
+#playersTable tfoot td {
+    font-size: 0.9rem;
+    padding: 10px;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 6px 12px;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    border-radius: 8px;
+}
+
+.dataTables_info,
+.dataTables_length,
+.dataTables_filter {
+    padding: 12px 16px !important;
+}
+
+/* --- Table Action Buttons --- */
+.btn-action {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+
+/* --- Modal Styling --- */
+.modal-header.bg-ut-blue {
+    border-bottom: 3px solid var(--ut-gold);
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Footer --- */
+.footer {
+    font-size: 0.85rem;
+}
+
+/* --- Filter bar --- */
+.form-select-sm {
+    font-size: 0.85rem;
+    padding: 0.3rem 2rem 0.3rem 0.5rem;
+}
+
+/* --- Alerts --- */
+.alert {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .stat-card h3 {
+        font-size: 1.1rem;
+    }
+
+    .navbar-brand .badge {
+        display: none !important;
+    }
+
+    #playersTable {
+        font-size: 0.8rem;
+    }
+}
+
+/* --- Money fields styling --- */
+.money-positive {
+    color: #198754;
+    font-weight: 600;
+}
+
+.money-zero {
+    color: #6c757d;
+}
+
+/* --- Print Styles --- */
+@media print {
+    .navbar, .footer, .btn, .dataTables_filter,
+    .dataTables_length, .dataTables_paginate,
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+    #playersTable thead th {
+        background-color: #333 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}
